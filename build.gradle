@@ -1,0 +1,65 @@
+buildscript {
+    ext {
+        springBootVersion = '1.3.5.RELEASE'
+    }
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+        classpath 'se.transmode.gradle:gradle-docker:1.2'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'spring-boot'
+apply plugin: 'docker'
+
+group = 'divilon'
+version = '1.3.5'
+
+jar {
+    baseName = 'eureka-server'
+    version = '1.3.5-SNAPSHOT'
+}
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.springframework.boot:spring-boot-starter-actuator'
+    compile 'org.springframework.cloud:spring-cloud-starter-eureka-server'
+
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Brixton.SR1"
+    }
+}
+
+task buildDocker(type: Docker, dependsOn: build) {
+	applicationName = jar.baseName
+
+    baseImage = 'java:alpine'
+    maintainer = 'Dmytro Kovalchuk <dimasmith@gmail.com>'
+    addFile("${jar.baseName}-${jar.version}.jar", "${jar.baseName}.jar")
+    entryPoint(["java","-Djava.security.egd=file:/dev/./urandom","-jar","/${jar.baseName}.jar"])
+    exposePort(8761)
+
+    doFirst {
+        copy {
+            from jar
+            into stageDir
+        }
+    }
+
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.13'
+}
